@@ -298,7 +298,7 @@ class StringServiceTest {
             "JAVA PROGRAMMING, Java Programming",
             "test case, Test Case",
             "single, Single",
-            "multiple   spaces, Multiple   Spaces"
+            "multiple   spaces, Multiple Spaces"
         })
         @DisplayName("Should convert various strings to title case")
         void shouldConvertVariousStringsToTitleCase(String input, String expected) {
@@ -358,7 +358,7 @@ class StringServiceTest {
             "hello, helo",
             "world, world",
             "programming, progamin",
-            "test, test",
+            "test, tes",
             "aaaaa, a",
             "abcabc, abc"
         })

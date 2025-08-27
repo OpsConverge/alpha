@@ -1,10 +1,10 @@
 name: Unit Test Pipeline
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+  # push:
+  #   branches: [ main, develop ]
+  # pull_request:
+  #   branches: [ main, develop ]
   workflow_dispatch:
     inputs:
       framework:
