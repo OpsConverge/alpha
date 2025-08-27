@@ -259,7 +259,8 @@ jobs:
       run: |
         cd python-service
         # Generate industry standard JUnit XML format
-        pytest tests/unit/ -v --cov=src --cov-report=html --cov-report=xml --cov-report=term-missing --junitxml=junit.xml
+        # Use -p no:warnings to suppress warnings and --import-mode=importlib for better import handling
+        pytest tests/unit/ -v --cov=src --cov-report=html --cov-report=xml --cov-report=term-missing --junitxml=junit.xml --import-mode=importlib
         
     - name: Generate standardized test results for platform
       if: always()
