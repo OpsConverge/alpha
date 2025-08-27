@@ -192,6 +192,14 @@ jobs:
         path: java-service/target/surefire-reports/*.xml
         retention-days: 30
         
+    - name: Upload JUnit XML for Test Platform
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: junit-test-results
+        path: java-service/target/surefire-reports/*.xml
+        retention-days: 30
+        
     - name: Upload JUnit coverage report
       if: always()
       uses: actions/upload-artifact@v4
@@ -338,6 +346,14 @@ jobs:
         path: python-service/junit.xml
         retention-days: 30
         
+    - name: Upload pytest XML for Test Platform
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-test-results
+        path: python-service/junit.xml
+        retention-days: 30
+        
     - name: Upload pytest coverage report
       if: always()
       uses: actions/upload-artifact@v4
@@ -399,6 +415,15 @@ jobs:
         cd node-service
         # Generate industry standard JUnit XML format using jest-junit
         npm run test:unit -- --testResultsProcessor=jest-junit --coverage --coverageReporters=json --coverageReporters=text
+        
+        # Verify JUnit XML was generated
+        if [ -f "junit.xml" ]; then
+          echo "✅ JUnit XML generated successfully"
+          ls -la junit.xml
+        else
+          echo "❌ JUnit XML not found, checking for alternative locations"
+          find . -name "*.xml" -type f
+        fi
         
     - name: Generate standardized test results for platform
       if: always()
@@ -470,6 +495,14 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: jest-junit-xml-standard
+        path: node-service/junit.xml
+        retention-days: 30
+        
+    - name: Upload Jest XML for Test Platform
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: jest-test-results
         path: node-service/junit.xml
         retention-days: 30
 
