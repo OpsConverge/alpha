@@ -192,14 +192,6 @@ jobs:
         path: java-service/target/surefire-reports/*.xml
         retention-days: 30
         
-    - name: Upload JUnit XML for Test Platform
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: junit-test-results
-        path: java-service/target/surefire-reports/*.xml
-        retention-days: 30
-        
     - name: Upload JUnit coverage report
       if: always()
       uses: actions/upload-artifact@v4
@@ -346,13 +338,7 @@ jobs:
         path: python-service/junit.xml
         retention-days: 30
         
-    - name: Upload pytest XML for Test Platform
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: pytest-test-results
-        path: python-service/junit.xml
-        retention-days: 30
+
         
     - name: Upload pytest coverage report
       if: always()
@@ -498,13 +484,7 @@ jobs:
         path: node-service/junit.xml
         retention-days: 30
         
-    - name: Upload Jest XML for Test Platform
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: jest-test-results
-        path: node-service/junit.xml
-        retention-days: 30
+
 
   # Combined Unit Test Report
   unit-test-summary:
