@@ -105,12 +105,91 @@ jobs:
         cd java-service
         mvn surefire-report:report-only
         
+    - name: Generate industry standard JUnit XML
+      if: always()
+      run: |
+        cd java-service
+        # Maven Surefire already generates JUnit XML format in target/surefire-reports/
+        # This is the industry standard format that most CI/CD platforms can parse
+        echo "JUnit XML reports generated in target/surefire-reports/"
+        ls -la target/surefire-reports/
+        
+    - name: Generate standardized test results for platform
+      if: always()
+      run: |
+        cd java-service
+        echo "Generating standardized test results for platform..."
+        
+        # Parse surefire reports to extract test statistics
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
+        FAILED_TESTS=0
+        SKIPPED_TESTS=0
+        
+        # Count tests from surefire reports
+        if [ -d "target/surefire-reports" ]; then
+          for report in target/surefire-reports/*.txt; do
+            if [ -f "$report" ]; then
+              # Extract test counts from surefire report
+              TESTS_RUN=$(grep "Tests run:" "$report" | head -1 | sed 's/.*Tests run: \([0-9]*\).*/\1/')
+              FAILURES=$(grep "Failures:" "$report" | head -1 | sed 's/.*Failures: \([0-9]*\).*/\1/')
+              ERRORS=$(grep "Errors:" "$report" | head -1 | sed 's/.*Errors: \([0-9]*\).*/\1/')
+              SKIPPED=$(grep "Skipped:" "$report" | head -1 | sed 's/.*Skipped: \([0-9]*\).*/\1/')
+              
+              TOTAL_TESTS=$((TOTAL_TESTS + TESTS_RUN))
+              FAILED_TESTS=$((FAILED_TESTS + FAILURES + ERRORS))
+              SKIPPED_TESTS=$((SKIPPED_TESTS + SKIPPED))
+            fi
+          done
+        fi
+        
+        PASSED_TESTS=$((TOTAL_TESTS - FAILED_TESTS - SKIPPED_TESTS))
+        
+        # Create standardized test results file
+        cat > test-results-summary.json << EOF
+        {
+          "framework": "junit",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "test_mode": "${{ env.TEST_MODE }}",
+          "include_failing_tests": "${{ env.INCLUDE_FAILING_TESTS }}",
+          "summary": {
+            "total_tests": $TOTAL_TESTS,
+            "passed_tests": $PASSED_TESTS,
+            "failed_tests": $FAILED_TESTS,
+            "skipped_tests": $SKIPPED_TESTS,
+            "success_rate": $([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0")
+          },
+          "status": "$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")"
+        }
+        EOF
+        
+        # Also create a simple CSV format for easy parsing
+        echo "framework,test_mode,include_failing_tests,total_tests,passed_tests,failed_tests,skipped_tests,success_rate,status" > test-results.csv
+        echo "junit,${{ env.TEST_MODE }},${{ env.INCLUDE_FAILING_TESTS }},$TOTAL_TESTS,$PASSED_TESTS,$FAILED_TESTS,$SKIPPED_TESTS,$([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0"),$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")" >> test-results.csv
+        
+        echo "Generated test results:"
+        cat test-results-summary.json
+        echo ""
+        echo "CSV format:"
+        cat test-results.csv
+        
     - name: Upload JUnit test results
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: junit-test-results
-        path: java-service/target/surefire-reports/
+        path: |
+          java-service/target/surefire-reports/
+          java-service/test-results-summary.json
+          java-service/test-results.csv
+        retention-days: 30
+        
+    - name: Upload JUnit XML (Industry Standard)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: junit-xml-standard
+        path: java-service/target/surefire-reports/*.xml
         retention-days: 30
         
     - name: Upload JUnit coverage report
@@ -179,14 +258,84 @@ jobs:
     - name: Run pytest unit tests
       run: |
         cd python-service
-        pytest tests/unit/ -v --cov=src --cov-report=html --cov-report=xml --cov-report=term-missing --junitxml=pytest-results.xml
+        # Generate industry standard JUnit XML format
+        pytest tests/unit/ -v --cov=src --cov-report=html --cov-report=xml --cov-report=term-missing --junitxml=junit.xml
+        
+    - name: Generate standardized test results for platform
+      if: always()
+      run: |
+        cd python-service
+        echo "Generating standardized test results for platform..."
+        
+        # Parse pytest XML results to extract test statistics
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
+        FAILED_TESTS=0
+        SKIPPED_TESTS=0
+        
+        # Extract test counts from pytest XML report
+        if [ -f "pytest-results.xml" ]; then
+          TOTAL_TESTS=$(grep -o 'testsuite.*tests="[0-9]*"' pytest-results.xml | head -1 | sed 's/.*tests="\([0-9]*\)".*/\1/')
+          FAILED_TESTS=$(grep -o 'testsuite.*failures="[0-9]*"' pytest-results.xml | head -1 | sed 's/.*failures="\([0-9]*\)".*/\1/')
+          SKIPPED_TESTS=$(grep -o 'testsuite.*skipped="[0-9]*"' pytest-results.xml | head -1 | sed 's/.*skipped="\([0-9]*\)".*/\1/')
+          ERRORS=$(grep -o 'testsuite.*errors="[0-9]*"' pytest-results.xml | head -1 | sed 's/.*errors="\([0-9]*\)".*/\1/')
+          
+          # Handle cases where attributes might not exist
+          TOTAL_TESTS=${TOTAL_TESTS:-0}
+          FAILED_TESTS=${FAILED_TESTS:-0}
+          SKIPPED_TESTS=${SKIPPED_TESTS:-0}
+          ERRORS=${ERRORS:-0}
+          
+          FAILED_TESTS=$((FAILED_TESTS + ERRORS))
+        fi
+        
+        PASSED_TESTS=$((TOTAL_TESTS - FAILED_TESTS - SKIPPED_TESTS))
+        
+        # Create standardized test results file
+        cat > test-results-summary.json << EOF
+        {
+          "framework": "pytest",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "test_mode": "${{ env.TEST_MODE }}",
+          "include_failing_tests": "${{ env.INCLUDE_FAILING_TESTS }}",
+          "summary": {
+            "total_tests": $TOTAL_TESTS,
+            "passed_tests": $PASSED_TESTS,
+            "failed_tests": $FAILED_TESTS,
+            "skipped_tests": $SKIPPED_TESTS,
+            "success_rate": $([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0")
+          },
+          "status": "$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")"
+        }
+        EOF
+        
+        # Also create a simple CSV format for easy parsing
+        echo "framework,test_mode,include_failing_tests,total_tests,passed_tests,failed_tests,skipped_tests,success_rate,status" > test-results.csv
+        echo "pytest,${{ env.TEST_MODE }},${{ env.INCLUDE_FAILING_TESTS }},$TOTAL_TESTS,$PASSED_TESTS,$FAILED_TESTS,$SKIPPED_TESTS,$([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0"),$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")" >> test-results.csv
+        
+        echo "Generated test results:"
+        cat test-results-summary.json
+        echo ""
+        echo "CSV format:"
+        cat test-results.csv
         
     - name: Upload pytest test results
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: pytest-test-results
-        path: python-service/pytest-results.xml
+        path: |
+          python-service/junit.xml
+          python-service/test-results-summary.json
+          python-service/test-results.csv
+        retention-days: 30
+        
+    - name: Upload pytest JUnit XML (Industry Standard)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-junit-xml-standard
+        path: python-service/junit.xml
         retention-days: 30
         
     - name: Upload pytest coverage report
@@ -248,14 +397,80 @@ jobs:
     - name: Run Jest unit tests
       run: |
         cd node-service
-        npm run test:unit
+        # Generate industry standard JUnit XML format using jest-junit
+        npm run test:unit -- --testResultsProcessor=jest-junit --coverage --coverageReporters=json --coverageReporters=text
+        
+    - name: Generate standardized test results for platform
+      if: always()
+      run: |
+        cd node-service
+        echo "Generating standardized test results for platform..."
+        
+        # Parse Jest JSON results to extract test statistics
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
+        FAILED_TESTS=0
+        SKIPPED_TESTS=0
+        
+        # Extract test counts from Jest JSON report
+        if [ -f "jest-results.json" ]; then
+          TOTAL_TESTS=$(jq -r '.numTotalTests' jest-results.json 2>/dev/null || echo "0")
+          PASSED_TESTS=$(jq -r '.numPassedTests' jest-results.json 2>/dev/null || echo "0")
+          FAILED_TESTS=$(jq -r '.numFailedTests' jest-results.json 2>/dev/null || echo "0")
+          SKIPPED_TESTS=$(jq -r '.numPendingTests' jest-results.json 2>/dev/null || echo "0")
+          
+          # Handle cases where jq might not be available or values are null
+          TOTAL_TESTS=${TOTAL_TESTS:-0}
+          PASSED_TESTS=${PASSED_TESTS:-0}
+          FAILED_TESTS=${FAILED_TESTS:-0}
+          SKIPPED_TESTS=${SKIPPED_TESTS:-0}
+        fi
+        
+        # Create standardized test results file
+        cat > test-results-summary.json << EOF
+        {
+          "framework": "jest",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "test_mode": "${{ env.TEST_MODE }}",
+          "include_failing_tests": "${{ env.INCLUDE_FAILING_TESTS }}",
+          "summary": {
+            "total_tests": $TOTAL_TESTS,
+            "passed_tests": $PASSED_TESTS,
+            "failed_tests": $FAILED_TESTS,
+            "skipped_tests": $SKIPPED_TESTS,
+            "success_rate": $([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0")
+          },
+          "status": "$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")"
+        }
+        EOF
+        
+        # Also create a simple CSV format for easy parsing
+        echo "framework,test_mode,include_failing_tests,total_tests,passed_tests,failed_tests,skipped_tests,success_rate,status" > test-results.csv
+        echo "jest,${{ env.TEST_MODE }},${{ env.INCLUDE_FAILING_TESTS }},$TOTAL_TESTS,$PASSED_TESTS,$FAILED_TESTS,$SKIPPED_TESTS,$([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0"),$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")" >> test-results.csv
+        
+        echo "Generated test results:"
+        cat test-results-summary.json
+        echo ""
+        echo "CSV format:"
+        cat test-results.csv
         
     - name: Upload Jest test results
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: jest-test-results
-        path: node-service/coverage/
+        path: |
+          node-service/coverage/
+          node-service/test-results-summary.json
+          node-service/test-results.csv
+        retention-days: 30
+        
+    - name: Upload Jest JUnit XML (Industry Standard)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: jest-junit-xml-standard
+        path: node-service/junit.xml
         retention-days: 30
 
   # Combined Unit Test Report
