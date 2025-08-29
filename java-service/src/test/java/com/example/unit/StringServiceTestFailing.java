@@ -108,31 +108,31 @@ public class StringServiceTestFailing {
     }
     
     @Test
-    @DisplayName("Should remove special characters - INTENTIONALLY FAILING")
-    void shouldRemoveSpecialCharacters() {
-        String result = stringService.removeSpecialChars("hello@world!");
-        assertEquals("hello@world!", result, "This test is intentionally failing - expected 'hello@world!' but got " + result);
+    @DisplayName("Should find longest word - INTENTIONALLY FAILING")
+    void shouldFindLongestWord() {
+        String result = stringService.findLongestWord("hello world python");
+        assertEquals("hello", result, "This test is intentionally failing - expected 'hello' but got " + result);
     }
     
     @Test
-    @DisplayName("Should remove special characters from string with no special chars")
-    void shouldRemoveSpecialCharactersFromStringWithNoSpecialChars() {
-        String result = stringService.removeSpecialChars("hello world");
-        assertEquals("helloworld", result);
+    @DisplayName("Should find longest word in single word string")
+    void shouldFindLongestWordInSingleWord() {
+        String result = stringService.findLongestWord("python");
+        assertEquals("python", result);
     }
     
     @ParameterizedTest
     @CsvSource({
-        "hello@world!, hello@world!",  // Intentionally wrong - should be "helloworld"
-        "python#123, python#123",  // Intentionally wrong - should be "python123"
-        "test$string%, test$string%",  // Intentionally wrong - should be "teststring"
-        "no_special_chars, nospecialchars",
+        "hello world python, hello",  // Intentionally wrong - should be "python"
+        "java development, java",  // Intentionally wrong - should be "development"
+        "javascript is awesome, javascript",  // Intentionally wrong - should be "javascript"
+        "single, single",
         "'', ''",
         "a, a"
     })
-    @DisplayName("Should remove special characters from various strings - INTENTIONALLY FAILING")
-    void shouldRemoveSpecialCharactersFromVariousStrings(String input, String expected) {
-        String result = stringService.removeSpecialChars(input);
+    @DisplayName("Should find longest word in various strings - INTENTIONALLY FAILING")
+    void shouldFindLongestWordInVariousStrings(String input, String expected) {
+        String result = stringService.findLongestWord(input);
         assertEquals(expected, result, "This test is intentionally failing - expected " + expected + " but got " + result);
     }
     
@@ -168,14 +168,14 @@ public class StringServiceTestFailing {
     @Test
     @DisplayName("Should convert to title case - INTENTIONALLY FAILING")
     void shouldConvertToTitleCase() {
-        String result = stringService.titleCase("hello world");
+        String result = stringService.toTitleCase("hello world");
         assertEquals("hello world", result, "This test is intentionally failing - expected 'hello world' but got " + result);
     }
     
     @Test
     @DisplayName("Should convert single word to title case - INTENTIONALLY FAILING")
     void shouldConvertSingleWordToTitleCase() {
-        String result = stringService.titleCase("hello");
+        String result = stringService.toTitleCase("hello");
         assertEquals("hello", result, "This test is intentionally failing - expected 'hello' but got " + result);
     }
     
@@ -189,7 +189,7 @@ public class StringServiceTestFailing {
     })
     @DisplayName("Should convert various strings to title case - INTENTIONALLY FAILING")
     void shouldConvertVariousStringsToTitleCase(String input, String expected) {
-        String result = stringService.titleCase(input);
+        String result = stringService.toTitleCase(input);
         assertEquals(expected, result, "This test is intentionally failing - expected " + expected + " but got " + result);
     }
 }

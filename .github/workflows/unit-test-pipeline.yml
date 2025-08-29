@@ -84,7 +84,13 @@ jobs:
     - name: Run JUnit unit tests
       run: |
         cd java-service
-        mvn clean test -Dtest=**/unit/** -DfailIfNoTests=false
+        if [ "${{ env.TEST_MODE }}" = "force_fail" ]; then
+          echo "Running failing tests"
+          mvn clean test -Dtest=**/unit/** -DfailIfNoTests=false
+        else
+          echo "Running working tests (excluding failing test files)"
+          mvn clean test -Dtest=**/unit/** -DfailIfNoTests=false -Dtest=!**/*Failing*
+        fi
         
     - name: Restore failing test files (if in normal mode)
       if: env.TEST_MODE != 'force_fail'
