@@ -42,9 +42,14 @@ jobs:
       run: |
         cd java-service
         echo "🔴 Using failing test files for JUnit"
-        # Copy failing test files to replace working ones
+        # Copy failing test files to replace working ones and rename the class inside
         cp src/test/java/com/example/unit/CalculatorServiceTestFailing.java src/test/java/com/example/unit/CalculatorServiceTest.java
         cp src/test/java/com/example/unit/StringServiceTestFailing.java src/test/java/com/example/unit/StringServiceTest.java
+        
+        # Rename the class inside the copied files to match the file name
+        sed -i 's/class CalculatorServiceTestFailing/class CalculatorServiceTest/g' src/test/java/com/example/unit/CalculatorServiceTest.java
+        sed -i 's/class StringServiceTestFailing/class StringServiceTest/g' src/test/java/com/example/unit/StringServiceTest.java
+        
         # Remove original failing test files to avoid duplicate class definitions
         rm src/test/java/com/example/unit/CalculatorServiceTestFailing.java
         rm src/test/java/com/example/unit/StringServiceTestFailing.java
@@ -59,7 +64,7 @@ jobs:
       run: |
         cd java-service
         echo "Restoring original test files"
-        # Restore working test files from git
+        # Restore working test files from git (this will overwrite the modified failing test files)
         git checkout HEAD -- src/test/java/com/example/unit/CalculatorServiceTest.java
         git checkout HEAD -- src/test/java/com/example/unit/StringServiceTest.java
         # Restore failing test files from git
