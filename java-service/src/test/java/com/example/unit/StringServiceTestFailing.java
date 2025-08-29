@@ -164,32 +164,4 @@ public class StringServiceTestFailing {
         String result = stringService.removeDuplicates(input);
         assertEquals(expected, result, "This test is intentionally failing - expected " + expected + " but got " + result);
     }
-    
-    @Test
-    @DisplayName("Should convert to title case - INTENTIONALLY FAILING")
-    void shouldConvertToTitleCase() {
-        String result = stringService.toTitleCase("hello world");
-        assertEquals("hello world", result, "This test is intentionally failing - expected 'hello world' but got " + result);
-    }
-    
-    @Test
-    @DisplayName("Should convert single word to title case - INTENTIONALLY FAILING")
-    void shouldConvertSingleWordToTitleCase() {
-        String result = stringService.toTitleCase("hello");
-        assertEquals("hello", result, "This test is intentionally failing - expected 'hello' but got " + result);
-    }
-    
-    @ParameterizedTest
-    @CsvSource({
-        "hello world, hello world",  // Intentionally wrong - should be "Hello World"
-        "python programming, python programming",  // Intentionally wrong - should be "Python Programming"
-        "javascript is awesome, javascript is awesome",  // Intentionally wrong - should be "Javascript Is Awesome"
-        "'', ''",
-        "a, a"  // Intentionally wrong - should be "A"
-    })
-    @DisplayName("Should convert various strings to title case - INTENTIONALLY FAILING")
-    void shouldConvertVariousStringsToTitleCase(String input, String expected) {
-        String result = stringService.toTitleCase(input);
-        assertEquals(expected, result, "This test is intentionally failing - expected " + expected + " but got " + result);
-    }
 }
