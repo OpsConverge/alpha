@@ -137,3 +137,4 @@ function parseTestResults(artifacts) {
 2. **Use custom formats** for simplified metrics
 3. **Add support for coverage reports** for quality metrics
 4. **Consider adding more industry standards** (Cobertura, LCOV) if needed
+

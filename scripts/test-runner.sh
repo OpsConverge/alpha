@@ -203,3 +203,4 @@ trap restore_files EXIT
 
 # Run main function
 main
+
