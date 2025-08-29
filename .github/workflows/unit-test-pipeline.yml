@@ -70,14 +70,33 @@ jobs:
           cp src/test/java/com/example/unit/StringServiceTestFailing.java src/test/java/com/example/unit/StringServiceTest.java
         else
           echo "🟢 Normal Mode: Using working test files"
-          # In normal mode, the working test files are already in place, no need to copy
-          echo "Working test files are already in place"
+          # In normal mode, exclude failing test files from compilation
+          echo "Excluding failing test files from compilation"
+          # Temporarily rename failing test files to exclude them from compilation
+          if [ -f "src/test/java/com/example/unit/CalculatorServiceTestFailing.java" ]; then
+            mv src/test/java/com/example/unit/CalculatorServiceTestFailing.java src/test/java/com/example/unit/CalculatorServiceTestFailing.java.bak
+          fi
+          if [ -f "src/test/java/com/example/unit/StringServiceTestFailing.java" ]; then
+            mv src/test/java/com/example/unit/StringServiceTestFailing.java src/test/java/com/example/unit/StringServiceTestFailing.java.bak
+          fi
         fi
         
     - name: Run JUnit unit tests
       run: |
         cd java-service
         mvn clean test -Dtest=**/unit/** -DfailIfNoTests=false
+        
+    - name: Restore failing test files (if in normal mode)
+      if: env.TEST_MODE != 'force_fail'
+      run: |
+        cd java-service
+        echo "Restoring failing test files"
+        if [ -f "src/test/java/com/example/unit/CalculatorServiceTestFailing.java.bak" ]; then
+          mv src/test/java/com/example/unit/CalculatorServiceTestFailing.java.bak src/test/java/com/example/unit/CalculatorServiceTestFailing.java
+        fi
+        if [ -f "src/test/java/com/example/unit/StringServiceTestFailing.java.bak" ]; then
+          mv src/test/java/com/example/unit/StringServiceTestFailing.java.bak src/test/java/com/example/unit/StringServiceTestFailing.java
+        fi
         
     - name: Generate JUnit test report
       if: always()

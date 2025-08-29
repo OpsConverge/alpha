@@ -49,46 +49,31 @@ public class StringServiceTestFailing {
     }
     
     @Test
-    @DisplayName("Should convert to uppercase - INTENTIONALLY FAILING")
-    void shouldConvertToUppercase() {
-        String result = stringService.toUpperCase("hello");
-        assertEquals("hello", result, "This test is intentionally failing - expected 'hello' but got " + result);
+    @DisplayName("Should convert to title case - INTENTIONALLY FAILING")
+    void shouldConvertToTitleCase() {
+        String result = stringService.toTitleCase("hello world");
+        assertEquals("hello world", result, "This test is intentionally failing - expected 'hello world' but got " + result);
     }
     
     @Test
-    @DisplayName("Should convert to lowercase - INTENTIONALLY FAILING")
-    void shouldConvertToLowercase() {
-        String result = stringService.toLowerCase("HELLO");
-        assertEquals("HELLO", result, "This test is intentionally failing - expected 'HELLO' but got " + result);
+    @DisplayName("Should convert to title case with single word - INTENTIONALLY FAILING")
+    void shouldConvertToTitleCaseWithSingleWord() {
+        String result = stringService.toTitleCase("hello");
+        assertEquals("hello", result, "This test is intentionally failing - expected 'hello' but got " + result);
     }
     
     @ParameterizedTest
     @CsvSource({
-        "hello, hello",  // Intentionally wrong - should be "HELLO"
-        "world, world",  // Intentionally wrong - should be "WORLD"
-        "python, python",  // Intentionally wrong - should be "PYTHON"
-        "HELLO, HELLO",
+        "hello world, hello world",  // Intentionally wrong - should be "Hello World"
+        "python programming, python programming",  // Intentionally wrong - should be "Python Programming"
+        "java development, java development",  // Intentionally wrong - should be "Java Development"
+        "Hello World, Hello World",
         "'', ''",
         "a, a"  // Intentionally wrong - should be "A"
     })
-    @DisplayName("Should convert various strings to uppercase - INTENTIONALLY FAILING")
-    void shouldConvertVariousStringsToUppercase(String input, String expected) {
-        String result = stringService.toUpperCase(input);
-        assertEquals(expected, result, "This test is intentionally failing - expected " + expected + " but got " + result);
-    }
-    
-    @ParameterizedTest
-    @CsvSource({
-        "HELLO, HELLO",  // Intentionally wrong - should be "hello"
-        "WORLD, WORLD",  // Intentionally wrong - should be "world"
-        "PYTHON, PYTHON",  // Intentionally wrong - should be "python"
-        "hello, hello",
-        "'', ''",
-        "A, A"  // Intentionally wrong - should be "a"
-    })
-    @DisplayName("Should convert various strings to lowercase - INTENTIONALLY FAILING")
-    void shouldConvertVariousStringsToLowercase(String input, String expected) {
-        String result = stringService.toLowerCase(input);
+    @DisplayName("Should convert various strings to title case - INTENTIONALLY FAILING")
+    void shouldConvertVariousStringsToTitleCase(String input, String expected) {
+        String result = stringService.toTitleCase(input);
         assertEquals(expected, result, "This test is intentionally failing - expected " + expected + " but got " + result);
     }
     
