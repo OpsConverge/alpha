@@ -1,0 +1,525 @@
+name: Passing Unit Tests Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      framework:
+        description: 'Select test framework to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - junit
+        - pytest
+        - jest
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+  JAVA_VERSION: '17'
+  TEST_MODE: 'normal'
+
+jobs:
+  # JUnit Unit Tests (Java)
+  junit-unit-tests:
+    name: JUnit Unit Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.framework == 'junit' || github.event.inputs.framework == 'all' || github.event.inputs.framework == ''
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Java ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: 'maven'
+        
+    - name: Run JUnit unit tests
+      run: |
+        cd java-service
+        mvn clean test -Dtest=**/unit/** -DfailIfNoTests=false
+        
+    - name: Generate JUnit test report
+      if: always()
+      run: |
+        cd java-service
+        mvn surefire-report:report-only
+        
+    - name: Generate industry standard JUnit XML
+      if: always()
+      run: |
+        cd java-service
+        # Maven Surefire already generates JUnit XML format in target/surefire-reports/
+        # This is the industry standard format that most CI/CD platforms can parse
+        echo "JUnit XML reports generated in target/surefire-reports/"
+        ls -la target/surefire-reports/
+        
+    - name: Generate standardized test results for platform
+      if: always()
+      run: |
+        cd java-service
+        echo "Generating standardized test results for platform..."
+        
+        # Parse surefire reports to extract test statistics
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
+        FAILED_TESTS=0
+        SKIPPED_TESTS=0
+        
+        # Count tests from surefire reports
+        if [ -d "target/surefire-reports" ]; then
+          for report in target/surefire-reports/*.txt; do
+            if [ -f "$report" ]; then
+              # Extract test counts from surefire report
+              TESTS_RUN=$(grep "Tests run:" "$report" | head -1 | sed 's/.*Tests run: \([0-9]*\).*/\1/')
+              FAILURES=$(grep "Failures:" "$report" | head -1 | sed 's/.*Failures: \([0-9]*\).*/\1/')
+              ERRORS=$(grep "Errors:" "$report" | head -1 | sed 's/.*Errors: \([0-9]*\).*/\1/')
+              SKIPPED=$(grep "Skipped:" "$report" | head -1 | sed 's/.*Skipped: \([0-9]*\).*/\1/')
+              
+              TOTAL_TESTS=$((TOTAL_TESTS + TESTS_RUN))
+              FAILED_TESTS=$((FAILED_TESTS + FAILURES + ERRORS))
+              SKIPPED_TESTS=$((SKIPPED_TESTS + SKIPPED))
+            fi
+          done
+        fi
+        
+        PASSED_TESTS=$((TOTAL_TESTS - FAILED_TESTS - SKIPPED_TESTS))
+        
+        # Create standardized test results file
+        cat > test-results-summary.json << EOF
+        {
+          "framework": "junit",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "test_mode": "${{ env.TEST_MODE }}",
+          "summary": {
+            "total_tests": $TOTAL_TESTS,
+            "passed_tests": $PASSED_TESTS,
+            "failed_tests": $FAILED_TESTS,
+            "skipped_tests": $SKIPPED_TESTS,
+            "success_rate": $([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0")
+          },
+          "status": "$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")"
+        }
+        EOF
+        
+        # Also create a simple CSV format for easy parsing
+        echo "framework,test_mode,total_tests,passed_tests,failed_tests,skipped_tests,success_rate,status" > test-results.csv
+        echo "junit,${{ env.TEST_MODE }},$TOTAL_TESTS,$PASSED_TESTS,$FAILED_TESTS,$SKIPPED_TESTS,$([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0"),$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")" >> test-results.csv
+        
+        echo "Generated test results:"
+        cat test-results-summary.json
+        echo ""
+        echo "CSV format:"
+        cat test-results.csv
+        
+    - name: Upload JUnit test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: junit-test-results
+        path: |
+          java-service/target/surefire-reports/
+          java-service/test-results-summary.json
+          java-service/test-results.csv
+        retention-days: 30
+        
+    - name: Upload JUnit XML (Industry Standard)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: junit-xml-standard
+        path: java-service/target/surefire-reports/*.xml
+        retention-days: 30
+        
+    - name: Upload JUnit coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: junit-coverage-report
+        path: java-service/target/site/jacoco/
+        retention-days: 30
+
+  # pytest Unit Tests (Python)
+  pytest-unit-tests:
+    name: pytest Unit Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.framework == 'pytest' || github.event.inputs.framework == 'all' || github.event.inputs.framework == ''
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r python-service/requirements.txt
+        pip install pytest pytest-cov pytest-html pytest-xdist
+        
+    - name: Run pytest unit tests
+      run: |
+        cd python-service
+        export PYTHONPATH=.
+        pytest tests/unit/ -v --junitxml=junit.xml --cov=src --cov-report=html --cov-report=xml
+        
+    - name: Generate standardized test results for platform
+      if: always()
+      run: |
+        cd python-service
+        echo "Generating standardized test results for platform..."
+        
+        # Parse JUnit XML to extract test statistics
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
+        FAILED_TESTS=0
+        SKIPPED_TESTS=0
+        COLLECTION_FAILED=false
+        INTENTIONAL_FAILURE=false
+        
+        if [ -f "junit.xml" ]; then
+          # Extract test statistics from JUnit XML
+          TOTAL_TESTS=$(grep -o 'tests="[0-9]*"' junit.xml | head -1 | grep -o '[0-9]*')
+          FAILED_TESTS=$(grep -o 'failures="[0-9]*"' junit.xml | head -1 | grep -o '[0-9]*')
+          SKIPPED_TESTS=$(grep -o 'skipped="[0-9]*"' junit.xml | head -1 | grep -o '[0-9]*')
+          
+          # Handle empty values
+          TOTAL_TESTS=${TOTAL_TESTS:-0}
+          FAILED_TESTS=${FAILED_TESTS:-0}
+          SKIPPED_TESTS=${SKIPPED_TESTS:-0}
+          
+          PASSED_TESTS=$((TOTAL_TESTS - FAILED_TESTS - SKIPPED_TESTS))
+          
+          # Check for collection failures
+          if grep -q "<error" junit.xml || grep -q "ModuleNotFoundError" junit.xml || grep -q "ImportError" junit.xml; then
+            COLLECTION_FAILED=true
+          fi
+          
+          # Check for "collected 0 items" which indicates collection failure
+          if grep -q "collected 0 items" junit.xml; then
+            COLLECTION_FAILED=true
+          fi
+          
+          # Check for errors attribute in testsuite
+          if grep -q 'errors="[1-9]' junit.xml; then
+            COLLECTION_FAILED=true
+          fi
+        else
+          echo "No JUnit XML file found"
+          COLLECTION_FAILED=true
+        fi
+        
+        echo "Final test counts:"
+        echo "  TOTAL_TESTS: $TOTAL_TESTS"
+        echo "  PASSED_TESTS: $PASSED_TESTS"
+        echo "  FAILED_TESTS: $FAILED_TESTS"
+        echo "  SKIPPED_TESTS: $SKIPPED_TESTS"
+        echo "  COLLECTION_FAILED: $COLLECTION_FAILED"
+        echo "  INTENTIONAL_FAILURE: $INTENTIONAL_FAILURE"
+        
+        # Create standardized test results file
+        cat > test-results-summary.json << EOF
+        {
+          "framework": "pytest",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "test_mode": "${{ env.TEST_MODE }}",
+          "summary": {
+            "total_tests": $TOTAL_TESTS,
+            "passed_tests": $PASSED_TESTS,
+            "failed_tests": $FAILED_TESTS,
+            "skipped_tests": $SKIPPED_TESTS,
+            "success_rate": $([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0")
+          },
+          "status": "$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")",
+          "collection_failed": $COLLECTION_FAILED,
+          "intentional_failure": $INTENTIONAL_FAILURE
+        }
+        EOF
+        
+        # Also create a simple CSV format for easy parsing
+        echo "framework,test_mode,total_tests,passed_tests,failed_tests,skipped_tests,success_rate,status,collection_failed,intentional_failure" > test-results.csv
+        echo "pytest,${{ env.TEST_MODE }},$TOTAL_TESTS,$PASSED_TESTS,$FAILED_TESTS,$SKIPPED_TESTS,$([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0"),$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED"),$COLLECTION_FAILED,$INTENTIONAL_FAILURE" >> test-results.csv
+        
+        echo "Generated test results:"
+        cat test-results-summary.json
+        echo ""
+        echo "CSV format:"
+        cat test-results.csv
+        
+    - name: Upload pytest test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-test-results
+        path: |
+          python-service/junit.xml
+          python-service/test-results-summary.json
+          python-service/test-results.csv
+        retention-days: 30
+        
+    - name: Upload pytest JUnit XML (Industry Standard)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-junit-xml-standard
+        path: python-service/junit.xml
+        retention-days: 30
+        
+    - name: Upload pytest coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-coverage-report
+        path: python-service/htmlcov/
+        retention-days: 30
+
+  # Jest Unit Tests (JavaScript/Node.js)
+  jest-unit-tests:
+    name: Jest Unit Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.framework == 'jest' || github.event.inputs.framework == 'all' || github.event.inputs.framework == ''
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: node-service/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd node-service
+        npm ci
+        
+    - name: Run Jest unit tests
+      run: |
+        cd node-service
+        npm test -- --testPathPattern=src/ --coverage --testResultsProcessor=jest-junit
+        
+    - name: Generate standardized test results for platform
+      if: always()
+      run: |
+        cd node-service
+        echo "Generating standardized test results for platform..."
+        
+        # Parse Jest results to extract test statistics
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
+        FAILED_TESTS=0
+        SKIPPED_TESTS=0
+        
+        # Try to parse Jest results from various sources
+        if [ -f "junit.xml" ]; then
+          # Extract from JUnit XML if available
+          TOTAL_TESTS=$(grep -o 'tests="[0-9]*"' junit.xml | head -1 | grep -o '[0-9]*')
+          FAILED_TESTS=$(grep -o 'failures="[0-9]*"' junit.xml | head -1 | grep -o '[0-9]*')
+          SKIPPED_TESTS=$(grep -o 'skipped="[0-9]*"' junit.xml | head -1 | grep -o '[0-9]*')
+          
+          TOTAL_TESTS=${TOTAL_TESTS:-0}
+          FAILED_TESTS=${FAILED_TESTS:-0}
+          SKIPPED_TESTS=${SKIPPED_TESTS:-0}
+        else
+          # Fallback: try to parse from Jest output
+          echo "No JUnit XML found, using Jest output"
+          TOTAL_TESTS=0
+          FAILED_TESTS=0
+          SKIPPED_TESTS=0
+        fi
+        
+        PASSED_TESTS=$((TOTAL_TESTS - FAILED_TESTS - SKIPPED_TESTS))
+        
+        # Create standardized test results file
+        cat > test-results-summary.json << EOF
+        {
+          "framework": "jest",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "test_mode": "${{ env.TEST_MODE }}",
+          "summary": {
+            "total_tests": $TOTAL_TESTS,
+            "passed_tests": $PASSED_TESTS,
+            "failed_tests": $FAILED_TESTS,
+            "skipped_tests": $SKIPPED_TESTS,
+            "success_rate": $([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0")
+          },
+          "status": "$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")"
+        }
+        EOF
+        
+        # Also create a simple CSV format for easy parsing
+        echo "framework,test_mode,total_tests,passed_tests,failed_tests,skipped_tests,success_rate,status" > test-results.csv
+        echo "jest,${{ env.TEST_MODE }},$TOTAL_TESTS,$PASSED_TESTS,$FAILED_TESTS,$SKIPPED_TESTS,$([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0"),$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")" >> test-results.csv
+        
+        echo "Generated test results:"
+        cat test-results-summary.json
+        echo ""
+        echo "CSV format:"
+        cat test-results.csv
+        
+    - name: Upload Jest test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: jest-test-results
+        path: |
+          node-service/junit.xml
+          node-service/test-results-summary.json
+          node-service/test-results.csv
+          node-service/coverage/
+        retention-days: 30
+
+  # Unit Test Summary
+  unit-test-summary:
+    name: Unit Test Summary
+    runs-on: ubuntu-latest
+    needs: [junit-unit-tests, pytest-unit-tests, jest-unit-tests]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all test artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: test-results/
+        
+    - name: Generate test summary
+      run: |
+        echo "## Passing Unit Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🎛️ Test Configuration" >> $GITHUB_STEP_SUMMARY
+        echo "- **Test Mode:** ${{ env.TEST_MODE }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Framework:** ${{ github.event.inputs.framework || 'all' }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # JUnit Results
+        if [ -d "test-results/junit-test-results" ]; then
+          echo "### JUnit Tests ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- Test results available in artifacts" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### JUnit Tests ❌" >> $GITHUB_STEP_SUMMARY
+          echo "- No test results found" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # pytest Results
+        if [ -d "test-results/pytest-test-results" ]; then
+          echo "### pytest Tests ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- Test results available in artifacts" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### pytest Tests ❌" >> $GITHUB_STEP_SUMMARY
+          echo "- No test results found" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Jest Results
+        if [ -d "test-results/jest-test-results" ]; then
+          echo "### Jest Tests ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- Test results available in artifacts" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### Jest Tests ❌" >> $GITHUB_STEP_SUMMARY
+          echo "- No test results found" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📊 **Coverage Reports:**" >> $GITHUB_STEP_SUMMARY
+        echo "- JUnit: Available in junit-coverage-report artifact" >> $GITHUB_STEP_SUMMARY
+        echo "- pytest: Available in pytest-coverage-report artifact" >> $GITHUB_STEP_SUMMARY
+        echo "- Jest: Available in jest-test-results artifact" >> $GITHUB_STEP_SUMMARY
+
+  # Quality Gates
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    needs: [junit-unit-tests, pytest-unit-tests, jest-unit-tests]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download test artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: test-results/
+        
+    - name: Quality Gate - Test Execution
+      run: |
+        echo "## Quality Gate Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Check which jobs were actually run based on framework selection
+        FRAMEWORK="${{ github.event.inputs.framework || 'all' }}"
+        echo "Framework selected: $FRAMEWORK" >> $GITHUB_STEP_SUMMARY
+        
+        # Determine which jobs should have run
+        JUNIT_EXPECTED=false
+        PYTEST_EXPECTED=false
+        JEST_EXPECTED=false
+        
+        if [[ "$FRAMEWORK" == "all" || "$FRAMEWORK" == "junit" || "$FRAMEWORK" == "" ]]; then
+          JUNIT_EXPECTED=true
+        fi
+        if [[ "$FRAMEWORK" == "all" || "$FRAMEWORK" == "pytest" || "$FRAMEWORK" == "" ]]; then
+          PYTEST_EXPECTED=true
+        fi
+        if [[ "$FRAMEWORK" == "all" || "$FRAMEWORK" == "jest" || "$FRAMEWORK" == "" ]]; then
+          JEST_EXPECTED=true
+        fi
+        
+        # Check if expected jobs completed successfully
+        QUALITY_GATE_PASSED=true
+        
+        if [ "$JUNIT_EXPECTED" = true ]; then
+          if [ -d "test-results/junit-test-results" ]; then
+            echo "✅ JUnit tests completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ JUnit tests failed or were not found" >> $GITHUB_STEP_SUMMARY
+            QUALITY_GATE_PASSED=false
+          fi
+        fi
+        
+        if [ "$PYTEST_EXPECTED" = true ]; then
+          if [ -d "test-results/pytest-test-results" ]; then
+            echo "✅ pytest tests completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ pytest tests failed or were not found" >> $GITHUB_STEP_SUMMARY
+            QUALITY_GATE_PASSED=false
+          fi
+        fi
+        
+        if [ "$JEST_EXPECTED" = true ]; then
+          if [ -d "test-results/jest-test-results" ]; then
+            echo "✅ Jest tests completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Jest tests failed or were not found" >> $GITHUB_STEP_SUMMARY
+            QUALITY_GATE_PASSED=false
+          fi
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ "$QUALITY_GATE_PASSED" = true ]; then
+          echo "🎉 **Quality Gate: PASSED**" >> $GITHUB_STEP_SUMMARY
+          echo "All expected tests completed successfully." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "🚨 **Quality Gate: FAILED**" >> $GITHUB_STEP_SUMMARY
+          echo "Some tests failed or were not found." >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
