@@ -70,9 +70,8 @@ jobs:
           cp src/test/java/com/example/unit/StringServiceTestFailing.java src/test/java/com/example/unit/StringServiceTest.java
         else
           echo "🟢 Normal Mode: Using working test files"
-          # Ensure we're using working test files
-          cp src/test/java/com/example/unit/CalculatorServiceTest.java src/test/java/com/example/unit/CalculatorServiceTest.java
-          cp src/test/java/com/example/unit/StringServiceTest.java src/test/java/com/example/unit/StringServiceTest.java
+          # In normal mode, the working test files are already in place, no need to copy
+          echo "Working test files are already in place"
         fi
         
     - name: Run JUnit unit tests
@@ -221,9 +220,8 @@ jobs:
           cp tests/unit/test_string_service_failing.py tests/unit/test_string_service.py
         else
           echo "🟢 Normal Mode: Using working test files"
-          # Copy working test files to replace any failing ones
-          cp tests/unit/test_calculator_service_working.py tests/unit/test_calculator_service.py
-          cp tests/unit/test_string_service_working.py tests/unit/test_string_service.py
+          # In normal mode, the working test files are already in place, no need to copy
+          echo "Working test files are already in place"
         fi
         
     - name: Run pytest unit tests
@@ -452,9 +450,8 @@ jobs:
           cp src/stringService.test.failing.js src/stringService.test.js
         else
           echo "🟢 Normal Mode: Using working test files"
-          # Copy working test files to replace any failing ones
-          cp src/calculatorService.test.working.js src/calculatorService.test.js
-          cp src/stringService.test.working.js src/stringService.test.js
+          # In normal mode, the working test files are already in place, no need to copy
+          echo "Working test files are already in place"
         fi
       
     - name: Run Jest unit tests
