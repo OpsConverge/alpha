@@ -65,9 +65,14 @@ jobs:
         
         if [ "${{ env.TEST_MODE }}" = "force_fail" ]; then
           echo "🔴 Force Fail Mode: Using failing test files"
-          # Copy failing test files to replace working ones
+          # Backup working test files and copy failing test files to replace them
+          cp src/test/java/com/example/unit/CalculatorServiceTest.java src/test/java/com/example/unit/CalculatorServiceTest.java.bak
+          cp src/test/java/com/example/unit/StringServiceTest.java src/test/java/com/example/unit/StringServiceTest.java.bak
           cp src/test/java/com/example/unit/CalculatorServiceTestFailing.java src/test/java/com/example/unit/CalculatorServiceTest.java
           cp src/test/java/com/example/unit/StringServiceTestFailing.java src/test/java/com/example/unit/StringServiceTest.java
+          # Remove the original failing test files to avoid duplicate class definitions
+          rm src/test/java/com/example/unit/CalculatorServiceTestFailing.java
+          rm src/test/java/com/example/unit/StringServiceTestFailing.java
         else
           echo "🟢 Normal Mode: Using working test files"
           # In normal mode, exclude failing test files from compilation
@@ -92,16 +97,37 @@ jobs:
           mvn clean test -Dtest=**/unit/** -DfailIfNoTests=false -Dtest=!**/*Failing*
         fi
         
-    - name: Restore failing test files (if in normal mode)
-      if: env.TEST_MODE != 'force_fail'
+    - name: Restore test files
+      if: always()
       run: |
         cd java-service
-        echo "Restoring failing test files"
-        if [ -f "src/test/java/com/example/unit/CalculatorServiceTestFailing.java.bak" ]; then
-          mv src/test/java/com/example/unit/CalculatorServiceTestFailing.java.bak src/test/java/com/example/unit/CalculatorServiceTestFailing.java
-        fi
-        if [ -f "src/test/java/com/example/unit/StringServiceTestFailing.java.bak" ]; then
-          mv src/test/java/com/example/unit/StringServiceTestFailing.java.bak src/test/java/com/example/unit/StringServiceTestFailing.java
+        echo "Restoring test files to original state"
+        
+        if [ "${{ env.TEST_MODE }}" = "force_fail" ]; then
+          echo "Restoring working test files from backup"
+          # Restore working test files from backup
+          if [ -f "src/test/java/com/example/unit/CalculatorServiceTest.java.bak" ]; then
+            mv src/test/java/com/example/unit/CalculatorServiceTest.java.bak src/test/java/com/example/unit/CalculatorServiceTest.java
+          fi
+          if [ -f "src/test/java/com/example/unit/StringServiceTest.java.bak" ]; then
+            mv src/test/java/com/example/unit/StringServiceTest.java.bak src/test/java/com/example/unit/StringServiceTest.java
+          fi
+          # Restore failing test files
+          if [ -f "src/test/java/com/example/unit/CalculatorServiceTestFailing.java.bak" ]; then
+            mv src/test/java/com/example/unit/CalculatorServiceTestFailing.java.bak src/test/java/com/example/unit/CalculatorServiceTestFailing.java
+          fi
+          if [ -f "src/test/java/com/example/unit/StringServiceTestFailing.java.bak" ]; then
+            mv src/test/java/com/example/unit/StringServiceTestFailing.java.bak src/test/java/com/example/unit/StringServiceTestFailing.java
+          fi
+        else
+          echo "Restoring failing test files from backup"
+          # Restore failing test files from backup
+          if [ -f "src/test/java/com/example/unit/CalculatorServiceTestFailing.java.bak" ]; then
+            mv src/test/java/com/example/unit/CalculatorServiceTestFailing.java.bak src/test/java/com/example/unit/CalculatorServiceTestFailing.java
+          fi
+          if [ -f "src/test/java/com/example/unit/StringServiceTestFailing.java.bak" ]; then
+            mv src/test/java/com/example/unit/StringServiceTestFailing.java.bak src/test/java/com/example/unit/StringServiceTestFailing.java
+          fi
         fi
         
     - name: Generate JUnit test report
