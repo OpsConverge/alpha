@@ -32,7 +32,9 @@
     ],
     "testMatch": [
       "**/tests/**/*.test.js",
-      "**/tests/**/*.spec.js"
+      "**/tests/**/*.spec.js",
+      "**/src/**/*.test.js",
+      "**/src/**/*.spec.js"
     ],
     "testResultsProcessor": "jest-junit",
     "reporters": [
