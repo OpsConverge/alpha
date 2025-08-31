@@ -169,3 +169,4 @@ class TestStringService:
             """Test removing special characters from various strings"""
             result = string_service.remove_special_chars(input_str)
             assert result == expected
+

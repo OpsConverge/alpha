@@ -115,3 +115,4 @@ class TestCalculatorService:
             """Test dividing various number combinations"""
             result = calculator.divide(a, b)
             assert result == expected
+

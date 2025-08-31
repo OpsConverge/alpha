@@ -115,3 +115,4 @@ class TestCalculatorService:
             """Test dividing various number combinations - INTENTIONALLY FAILING"""
             result = calculator.divide(a, b)
             assert result == expected, f"This test is intentionally failing - expected {expected} but got {result}"
+

@@ -136,3 +136,4 @@ public class CalculatorServiceTestFailing {
         assertEquals(expected, result, String.format("This test is intentionally failing - expected %.1f but got %.1f", expected, result));
     }
 }
+

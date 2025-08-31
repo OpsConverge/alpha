@@ -169,3 +169,4 @@ class TestStringService:
             """Test removing special characters from various strings - INTENTIONALLY FAILING"""
             result = string_service.remove_special_chars(input_str)
             assert result == expected, f"This test is intentionally failing - expected {expected} but got {result}"
+
