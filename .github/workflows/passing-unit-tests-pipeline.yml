@@ -358,7 +358,7 @@ jobs:
         echo "Files in src directory:"
         ls -la src/
         echo ""
-        # Copy working test files to the expected names
+        # Copy working test files to the expected names for passing tests
         if [ -f "src/calculatorService.test.working.js" ] && [ -f "src/stringService.test.working.js" ]; then
           cp src/calculatorService.test.working.js src/calculatorService.test.js
           cp src/stringService.test.working.js src/stringService.test.js
