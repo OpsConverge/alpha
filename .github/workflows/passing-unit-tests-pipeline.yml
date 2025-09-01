@@ -413,7 +413,7 @@ jobs:
         cd node-service
         echo "Running Jest tests..."
         echo "Test files to run:"
-        ls -la src/*.test.js
+        ls -la src/*.test.working.js
         echo ""
         # Run the tests - Jest will automatically find the .test.js files in src/
         npm test -- --coverage --verbose
