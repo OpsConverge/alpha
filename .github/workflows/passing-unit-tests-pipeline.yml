@@ -383,30 +383,30 @@ jobs:
         echo "Available test files:"
         find . -name "*.test.js" -o -name "*.spec.js"
         
-    - name: Ensure working test files are in place
-      run: |
-        cd node-service
-        echo "🟢 Ensuring working test files are in place"
-        echo "Current directory: $(pwd)"
-        echo "Files in src directory:"
-        ls -la src/
-        echo ""
-        # Copy working test files to the expected names for passing tests
-        if [ -f "src/calculatorService.test.working.js" ] && [ -f "src/stringService.test.working.js" ]; then
-          cp src/calculatorService.test.working.js src/calculatorService.test.js
-          cp src/stringService.test.working.js src/stringService.test.js
-          echo "✅ Working test files copied to expected names"
-          echo "Files after copy:"
-          ls -la src/*.test.js
-        else
-          echo "❌ Working test files not found"
-          echo "Looking for:"
-          echo "  - src/calculatorService.test.working.js"
-          echo "  - src/stringService.test.working.js"
-          echo "Available files:"
-          ls -la src/
-          exit 1
-        fi
+    # - name: Ensure working test files are in place
+    #   run: |
+    #     cd node-service
+    #     echo "🟢 Ensuring working test files are in place"
+    #     echo "Current directory: $(pwd)"
+    #     echo "Files in src directory:"
+    #     ls -la src/
+    #     echo ""
+    #     # Copy working test files to the expected names for passing tests
+    #     if [ -f "src/calculatorService.test.working.js" ] && [ -f "src/stringService.test.working.js" ]; then
+    #       cp src/calculatorService.test.working.js src/calculatorService.test.js
+    #       cp src/stringService.test.working.js src/stringService.test.js
+    #       echo "✅ Working test files copied to expected names"
+    #       echo "Files after copy:"
+    #       ls -la src/*.test.js
+    #     else
+    #       echo "❌ Working test files not found"
+    #       echo "Looking for:"
+    #       echo "  - src/calculatorService.test.working.js"
+    #       echo "  - src/stringService.test.working.js"
+    #       echo "Available files:"
+    #       ls -la src/
+    #       exit 1
+    #     fi
         
     - name: Run Jest unit tests
       run: |
