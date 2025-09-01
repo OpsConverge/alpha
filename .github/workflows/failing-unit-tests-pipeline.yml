@@ -21,6 +21,146 @@ env:
   TEST_MODE: 'failing'
 
 jobs:
+  # pytest Unit Tests (Python) - Failing Tests
+  pytest-unit-tests:
+    name: pytest Unit Tests (Failing)
+    runs-on: ubuntu-latest
+    if: github.event.inputs.framework == 'pytest' || github.event.inputs.framework == 'all' || github.event.inputs.framework == ''
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r python-service/requirements.txt
+        pip install pytest pytest-cov pytest-html pytest-xdist
+        
+    - name: Ensure failing test files are in place
+      run: |
+        cd python-service
+        echo "🔴 Ensuring failing test files are in place"
+        echo "Current directory: $(pwd)"
+        echo "Files in unit test directory:"
+        ls -la tests/unit/
+        echo ""
+        # Copy failing test files to the expected names for failing tests
+        if [ -f "tests/unit/test_calculator_service_failing.py" ] && [ -f "tests/unit/test_string_service_failing.py" ]; then
+          cp tests/unit/test_calculator_service_failing.py tests/unit/test_calculator_service.py
+          cp tests/unit/test_string_service_failing.py tests/unit/test_string_service.py
+          echo "✅ Failing test files copied to expected names"
+          echo "Using:"
+          echo "  - test_calculator_service_failing.py → test_calculator_service.py"
+          echo "  - test_string_service_failing.py → test_string_service.py"
+        else
+          echo "❌ Failing test files not found"
+          echo "Looking for:"
+          echo "  - tests/unit/test_calculator_service_failing.py"
+          echo "  - tests/unit/test_string_service_failing.py"
+          echo "Available files:"
+          ls -la tests/unit/
+          exit 1
+        fi
+        
+    - name: Run pytest unit tests (expecting failures)
+      run: |
+        cd python-service
+        export PYTHONPATH=.
+        # Run the failing test files - we expect these to fail
+        pytest tests/unit/test_calculator_service.py tests/unit/test_string_service.py -v --junitxml=junit.xml --cov=src --cov-report=html --cov-report=xml || true
+        
+    - name: Restore original test files
+      if: always()
+      run: |
+        cd python-service
+        echo "Restoring original test files"
+        # Remove the copied test files to restore original state
+        rm -f tests/unit/test_calculator_service.py tests/unit/test_string_service.py
+        
+    - name: Generate standardized test results for platform
+      if: always()
+      run: |
+        cd python-service
+        echo "Generating standardized test results for platform..."
+        
+        # Parse JUnit XML to extract test statistics
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
+        FAILED_TESTS=0
+        SKIPPED_TESTS=0
+        
+        if [ -f "junit.xml" ]; then
+          # Extract test statistics from JUnit XML
+          TOTAL_TESTS=$(grep -o 'tests="[0-9]*"' junit.xml | head -1 | grep -o '[0-9]*')
+          FAILED_TESTS=$(grep -o 'failures="[0-9]*"' junit.xml | head -1 | grep -o '[0-9]*')
+          SKIPPED_TESTS=$(grep -o 'skipped="[0-9]*"' junit.xml | head -1 | grep -o '[0-9]*')
+          
+          TOTAL_TESTS=${TOTAL_TESTS:-0}
+          FAILED_TESTS=${FAILED_TESTS:-0}
+          SKIPPED_TESTS=${SKIPPED_TESTS:-0}
+          
+          PASSED_TESTS=$((TOTAL_TESTS - FAILED_TESTS - SKIPPED_TESTS))
+        else
+          echo "No JUnit XML found, using default values"
+          TOTAL_TESTS=0
+          FAILED_TESTS=0
+          SKIPPED_TESTS=0
+        fi
+        
+        PASSED_TESTS=$((TOTAL_TESTS - FAILED_TESTS - SKIPPED_TESTS))
+        
+        # Create standardized test results file
+        cat > test-results-summary.json << EOF
+        {
+          "framework": "pytest",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "test_mode": "${{ env.TEST_MODE }}",
+          "summary": {
+            "total_tests": $TOTAL_TESTS,
+            "passed_tests": $PASSED_TESTS,
+            "failed_tests": $FAILED_TESTS,
+            "skipped_tests": $SKIPPED_TESTS,
+            "success_rate": $([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0")
+          },
+          "status": "$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")"
+        }
+        EOF
+        
+        # Also create a simple CSV format for easy parsing
+        echo "framework,test_mode,total_tests,passed_tests,failed_tests,skipped_tests,success_rate,status" > test-results.csv
+        echo "pytest,${{ env.TEST_MODE }},$TOTAL_TESTS,$PASSED_TESTS,$FAILED_TESTS,$SKIPPED_TESTS,$([ $TOTAL_TESTS -gt 0 ] && echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc || echo "0"),$([ $FAILED_TESTS -eq 0 ] && echo "PASSED" || echo "FAILED")" >> test-results.csv
+        
+        echo "Generated test results:"
+        cat test-results-summary.json
+        echo ""
+        echo "CSV format:"
+        cat test-results.csv
+        
+    - name: Upload pytest test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-failing-test-results
+        path: |
+          python-service/junit.xml
+          python-service/test-results-summary.json
+          python-service/test-results.csv
+        retention-days: 30
+
   # Jest Unit Tests (JavaScript/Node.js) - Failing Tests
   jest-unit-tests:
     name: Jest Unit Tests (Failing)
@@ -175,7 +315,7 @@ jobs:
   unit-test-summary:
     name: Failing Unit Test Summary
     runs-on: ubuntu-latest
-    needs: [jest-unit-tests]
+    needs: [pytest-unit-tests, jest-unit-tests]
     if: always()
     
     steps:
@@ -196,6 +336,16 @@ jobs:
         echo "- **Framework:** ${{ github.event.inputs.framework || 'all' }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
+        # pytest Results
+        if [ -d "test-results/pytest-failing-test-results" ]; then
+          echo "### pytest Tests (Failing) ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- Test results available in artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Expected failures for testing error handling" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### pytest Tests (Failing) ❌" >> $GITHUB_STEP_SUMMARY
+          echo "- No test results found" >> $GITHUB_STEP_SUMMARY
+        fi
+        
         # Jest Results
         if [ -d "test-results/jest-failing-test-results" ]; then
           echo "### Jest Tests (Failing) ✅" >> $GITHUB_STEP_SUMMARY
@@ -208,4 +358,5 @@ jobs:
         
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "📊 **Coverage Reports:**" >> $GITHUB_STEP_SUMMARY
+        echo "- pytest: Available in pytest-failing-test-results artifact" >> $GITHUB_STEP_SUMMARY
         echo "- Jest: Available in jest-failing-test-results artifact" >> $GITHUB_STEP_SUMMARY
