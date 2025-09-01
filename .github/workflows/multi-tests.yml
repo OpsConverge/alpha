@@ -1,0 +1,88 @@
+name: Multi-Framework Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      framework:
+        description: "Which test framework to run"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - junit
+          - pytest
+          - jest
+          - all
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show selection
+        run: echo "Selected framework: ${{ github.event.inputs.framework }}"
+
+      # -------- JUnit --------
+      - name: Set up Java
+        if: ${{ github.event.inputs.framework == 'junit' || github.event.inputs.framework == 'all' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Run JUnit tests (Maven)
+        if: ${{ github.event.inputs.framework == 'junit' || github.event.inputs.framework == 'all' }}
+        working-directory: java-service
+        run: mvn -B -ntp test
+        continue-on-error: true
+
+      # -------- pytest --------
+      - name: Set up Python
+        if: ${{ github.event.inputs.framework == 'pytest' || github.event.inputs.framework == 'all' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        if: ${{ github.event.inputs.framework == 'pytest' || github.event.inputs.framework == 'all' }}
+        working-directory: python-service
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest
+        if: ${{ github.event.inputs.framework == 'pytest' || github.event.inputs.framework == 'all' }}
+        working-directory: python-service
+        run: pytest -q
+        continue-on-error: true
+
+      # -------- Jest --------
+      - name: Set up Node
+        if: ${{ github.event.inputs.framework == 'jest' || github.event.inputs.framework == 'all' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install npm deps
+        if: ${{ github.event.inputs.framework == 'jest' || github.event.inputs.framework == 'all' }}
+        working-directory: node-service
+        run: npm install
+
+      - name: Run Jest
+        if: ${{ github.event.inputs.framework == 'jest' || github.event.inputs.framework == 'all' }}
+        working-directory: node-service
+        run: npm test --silent
+        continue-on-error: true
+
+      # -------- Summary --------
+      - name: Add note to job summary
+        run: |
+          {
+            echo "### Test run summary"
+            echo ""
+            echo "- Selection: \`${{ github.event.inputs.framework }}\`"
+            echo "- This repo intentionally includes failing tests in each suite to demonstrate mixed results."
+            echo "- Steps use \`continue-on-error\` so all selected suites run even if one fails."
+          } >> "$GITHUB_STEP_SUMMARY"

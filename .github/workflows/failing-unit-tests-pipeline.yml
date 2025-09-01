@@ -194,7 +194,7 @@ jobs:
         npx jest --showConfig | head -20
         echo ""
         echo "Available test files:"
-        find . -name "*.test.js" -o -name "*.spec.js"
+        find . -name "*.test.failing.js" -o -name "*.spec.js"
         
     - name: Ensure failing test files are in place
       run: |
