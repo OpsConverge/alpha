@@ -1,0 +1,111 @@
+{
+  "scenarios": [
+    {
+      "name": "Enterprise Java Backend",
+      "framework": "junit",
+      "test_count": 250,
+      "failure_rate": 0.08,
+      "description": "Large Spring Boot application with microservices",
+      "parse_result": {
+        "success": true,
+        "framework": "junit",
+        "test_count": 75,
+        "passed": 68,
+        "failed": 6,
+        "skipped": 0,
+        "duration": 110.785,
+        "parse_time": 0.0460050106048584,
+        "artifact_name": "Enterprise Java Backend.xml",
+        "repo_name": "Enterprise Java Backend",
+        "run_id": "499326a0c8ccba696244fdc07e0555d2d909eee71662e285c2166dc4cd0660a2"
+      },
+      "success": true
+    },
+    {
+      "name": "Python API Service",
+      "framework": "pytest",
+      "test_count": 180,
+      "failure_rate": 0.05,
+      "description": "Django REST API with comprehensive test coverage",
+      "parse_result": {
+        "success": true,
+        "framework": "playwright",
+        "test_count": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "duration": null,
+        "parse_time": 0.006995201110839844,
+        "artifact_name": "Python API Service.xml",
+        "repo_name": "Python API Service",
+        "run_id": "d367bcd83517d41650216883c39024b332be0be7407dea39444f63a6c2681d40"
+      },
+      "success": true
+    },
+    {
+      "name": "React Frontend",
+      "framework": "jest",
+      "test_count": 120,
+      "failure_rate": 0.03,
+      "description": "React application with component and integration tests",
+      "parse_result": {
+        "success": true,
+        "framework": "jest",
+        "test_count": 85,
+        "passed": 80,
+        "failed": 3,
+        "skipped": 2,
+        "duration": 45.0,
+        "parse_time": 0.022014617919921875,
+        "artifact_name": "React Frontend.xml",
+        "repo_name": "React Frontend",
+        "run_id": "31f170c28da90a368eef79be5bb73ccf741a6ceed50e17c285d1eecd29e5937c"
+      },
+      "success": true
+    },
+    {
+      "name": "Go Microservice",
+      "framework": "go-test",
+      "test_count": 95,
+      "failure_rate": 0.06,
+      "description": "Go microservice with HTTP handlers and business logic",
+      "parse_result": {
+        "success": true,
+        "framework": "go-test",
+        "test_count": 35,
+        "passed": 33,
+        "failed": 2,
+        "skipped": 0,
+        "duration": null,
+        "parse_time": 0.010986566543579102,
+        "artifact_name": "Go Microservice.xml",
+        "repo_name": "Go Microservice",
+        "run_id": "4aa58c5523cc6ada387d41e8a7289dae7e69416740de5d2e20024d17d6857584"
+      },
+      "success": true
+    },
+    {
+      "name": ".NET Core API",
+      "framework": "xunit",
+      "test_count": 140,
+      "failure_rate": 0.07,
+      "description": "ASP.NET Core Web API with entity framework tests",
+      "parse_result": {
+        "success": true,
+        "framework": "xunit",
+        "test_count": 93,
+        "passed": 90,
+        "failed": 3,
+        "skipped": 0,
+        "duration": 100.777,
+        "parse_time": 0.032999277114868164,
+        "artifact_name": ".NET Core API.xml",
+        "repo_name": ".NET Core API",
+        "run_id": "b8ec5bdb929d2ff0cb46cb1f8355a88405726d3e653da925b050c205bc2e164a"
+      },
+      "success": true
+    }
+  ],
+  "total_test_cases": 288,
+  "total_frameworks": 5
+}

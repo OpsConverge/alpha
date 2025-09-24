@@ -52,13 +52,21 @@ jobs:
       with:
         python-version: '3.9'
     
-    - name: Install pytest
-      run: pip install pytest
+    - name: Install pytest and json reporter
+      run: pip install pytest pytest-json-report
     
     - name: Run Python Pytest Tests
       run: |
         cd python-service
-        pytest tests/ -v --tb=short || true
+        # Run pytest with JSON output for better parsing
+        pytest tests/ -v --tb=short --json-report --json-report-file=pytest-results.json || true
+        
+    - name: Upload Pytest Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: pytest-test-results
+        path: python-service/pytest-results.json
 
   # Node.js Jest Tests
   nodejs-jest:
@@ -80,7 +88,15 @@ jobs:
     - name: Run Node.js Jest Tests
       run: |
         cd node-service
-        npm test || true
+        # Fix permission issue by using npx and output results as JSON
+        npx jest --verbose --json --outputFile=jest-results.json || true
+        
+    - name: Upload Jest Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: jest-test-results
+        path: node-service/jest-results.json
 
   # Test Summary
   test-summary:
